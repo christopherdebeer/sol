@@ -1,0 +1,53 @@
+body {
+  margin: 0;
+  font-family: sans-serif;
+  overflow: hidden;
+}
+
+#mindmap {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.bubble {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #ffd54f;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 5px;
+  cursor: pointer;
+  transition: transform 0.3s;
+}
+
+.center {
+  background: #ffb300;
+}
+
+.menu {
+  position: absolute;
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 4px;
+  border-radius: 4px;
+  z-index: 1000;
+}
+
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #eee;
+  display: flex;
+  justify-content: space-around;
+  padding: 10px 0;
+}
