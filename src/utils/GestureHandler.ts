@@ -18,7 +18,7 @@ export class GestureHandler extends EventEmitter {
   private lastTapTime = 0
   private lastTapPosition: Position = { x: 0, y: 0 }
 
-  private readonly DOUBLE_TAP_DELAY = 300
+  private readonly DOUBLE_TAP_DELAY = 100
   private readonly LONG_PRESS_DELAY = 500
   private readonly TAP_THRESHOLD = 10
   private readonly PINCH_THRESHOLD = 20
@@ -118,6 +118,12 @@ export class GestureHandler extends EventEmitter {
   }
 
   private handleTap(touch: Touch, originalEvent: TouchEvent): void {
+    console.log('[GESTURE DEBUG] handleTap called', {
+      touchX: touch.clientX,
+      touchY: touch.clientY,
+      target: originalEvent.target
+    })
+    
     const now = Date.now()
     const position: Position = { x: touch.clientX, y: touch.clientY }
     const timeSinceLastTap = now - this.lastTapTime
@@ -128,6 +134,7 @@ export class GestureHandler extends EventEmitter {
 
     if (timeSinceLastTap < this.DOUBLE_TAP_DELAY && distanceFromLastTap < this.TAP_THRESHOLD) {
       // Double tap
+      console.log('[GESTURE DEBUG] Double tap detected, emitting doubleTap')
       if (this.tapTimeout) {
         clearTimeout(this.tapTimeout)
         this.tapTimeout = null
@@ -137,7 +144,9 @@ export class GestureHandler extends EventEmitter {
       this.lastTapTime = 0 // Reset to prevent triple tap
     } else {
       // Single tap (with delay to detect double tap)
+      console.log('[GESTURE DEBUG] Single tap detected, setting timeout for', this.DOUBLE_TAP_DELAY, 'ms')
       this.tapTimeout = window.setTimeout(() => {
+        console.log('[GESTURE DEBUG] Single tap timeout fired, emitting tap event')
         this.emitGesture('tap', originalEvent, position)
         this.tapTimeout = null
       }, this.DOUBLE_TAP_DELAY)
@@ -219,6 +228,14 @@ export class GestureHandler extends EventEmitter {
     deltaY = 0,
     scale?: number
   ): void {
+    console.log('[GESTURE DEBUG] emitGesture called', {
+      type,
+      target: originalEvent.target,
+      position,
+      targetElement: (originalEvent.target as HTMLElement)?.className,
+      targetDataset: (originalEvent.target as HTMLElement)?.dataset
+    })
+    
     const gestureEvent: GestureEvent = {
       type,
       target: originalEvent.target as HTMLElement,
@@ -229,11 +246,19 @@ export class GestureHandler extends EventEmitter {
       originalEvent
     }
 
+    console.log('[GESTURE DEBUG] Emitting gesture event:', type)
     this.emit(type, gestureEvent)
   }
 
   // Mouse event handlers for desktop testing
   private handleMouseDown(event: MouseEvent): void {
+    console.log('[GESTURE DEBUG] handleMouseDown called', {
+      mouseX: event.clientX,
+      mouseY: event.clientY,
+      target: event.target,
+      targetClass: (event.target as HTMLElement)?.className
+    })
+    
     const mockTouch: TouchState = {
       id: 0,
       startX: event.clientX,
@@ -264,15 +289,34 @@ export class GestureHandler extends EventEmitter {
   }
 
   private handleMouseUp(event: MouseEvent): void {
+    console.log('[GESTURE DEBUG] handleMouseUp called', {
+      mouseX: event.clientX,
+      mouseY: event.clientY,
+      target: event.target,
+      targetClass: (event.target as HTMLElement)?.className
+    })
+    
     const touchState = this.touches.get(0)
-    if (!touchState) return
+    if (!touchState) {
+      console.log('[GESTURE DEBUG] No touch state found for mouse up')
+      return
+    }
 
     const deltaX = event.clientX - touchState.startX
     const deltaY = event.clientY - touchState.startY
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
     const duration = Date.now() - touchState.startTime
 
+    console.log('[GESTURE DEBUG] Mouse up analysis', {
+      distance,
+      duration,
+      threshold: this.TAP_THRESHOLD,
+      longPressDelay: this.LONG_PRESS_DELAY,
+      willTriggerTap: distance < this.TAP_THRESHOLD && duration < this.LONG_PRESS_DELAY
+    })
+
     if (distance < this.TAP_THRESHOLD && duration < this.LONG_PRESS_DELAY) {
+      console.log('[GESTURE DEBUG] Triggering handleTap from mouse up')
       this.handleTap({ clientX: event.clientX, clientY: event.clientY, identifier: 0 } as any, event as any)
     }
 

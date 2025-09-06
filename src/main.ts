@@ -43,8 +43,14 @@ class SolApp {
     this.navigationController.on('export', () => this.handleExport())
 
     // Gesture events
-    this.gestureHandler.on('tap', (event: GestureEvent) => this.radialInterface.handleTap(event))
-    this.gestureHandler.on('doubleTap', (event: GestureEvent) => this.radialInterface.handleDoubleTap(event))
+    this.gestureHandler.on('tap', (event: GestureEvent) => {
+      console.log('[MAIN DEBUG] Tap event received from GestureHandler, forwarding to RadialInterface')
+      this.radialInterface.handleTap(event)
+    })
+    this.gestureHandler.on('doubleTap', (event: GestureEvent) => {
+      console.log('[MAIN DEBUG] DoubleTap event received from GestureHandler, forwarding to RadialInterface')
+      this.radialInterface.handleDoubleTap(event)
+    })
     this.gestureHandler.on('longPress', (event: GestureEvent) => this.radialInterface.handleLongPress(event))
     this.gestureHandler.on('pan', (event: GestureEvent) => this.radialInterface.handlePan(event))
     this.gestureHandler.on('pinch', (event: GestureEvent) => this.radialInterface.handlePinch(event))
