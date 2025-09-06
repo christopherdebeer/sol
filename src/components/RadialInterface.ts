@@ -184,7 +184,8 @@ export class RadialInterface extends EventEmitter {
   }
 
   handleTap(event: GestureEvent): void {
-    const bubble = event.target.closest('.bubble') as HTMLElement
+    const bubble = event.target.closest('.bubble') as HTMLElement;
+    console.log("bubbleEl", bubble, bubble.dataset.bubbleId);
     if (bubble && bubble.dataset.bubbleId) {
       console.log('[NAVIGATION DEBUG] handleTap called', {
         bubbleId: bubble.dataset.bubbleId,
