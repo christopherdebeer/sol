@@ -101,7 +101,7 @@ export class GestureHandler extends EventEmitter {
     this.clearTimers()
   }
 
-  private handleTouchCancel(event: TouchEvent): void {
+  private handleTouchCancel(_event: TouchEvent): void {
     this.clearTimers()
     this.touches.clear()
   }

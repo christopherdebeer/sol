@@ -2,11 +2,12 @@ import './styles/main.css'
 import { RadialInterface } from './components/RadialInterface'
 import { NavigationController } from './components/NavigationController'
 import { GestureHandler } from './utils/GestureHandler'
+import { GestureEvent } from './types'
 
 class SolApp {
-  private radialInterface: RadialInterface
-  private navigationController: NavigationController
-  private gestureHandler: GestureHandler
+  private radialInterface!: RadialInterface
+  private navigationController!: NavigationController
+  private gestureHandler!: GestureHandler
 
   constructor() {
     this.initializeApp()
@@ -42,11 +43,11 @@ class SolApp {
     this.navigationController.on('export', () => this.handleExport())
 
     // Gesture events
-    this.gestureHandler.on('tap', (event) => this.radialInterface.handleTap(event))
-    this.gestureHandler.on('doubleTap', (event) => this.radialInterface.handleDoubleTap(event))
-    this.gestureHandler.on('longPress', (event) => this.radialInterface.handleLongPress(event))
-    this.gestureHandler.on('pan', (event) => this.radialInterface.handlePan(event))
-    this.gestureHandler.on('pinch', (event) => this.radialInterface.handlePinch(event))
+    this.gestureHandler.on('tap', (event: GestureEvent) => this.radialInterface.handleTap(event))
+    this.gestureHandler.on('doubleTap', (event: GestureEvent) => this.radialInterface.handleDoubleTap(event))
+    this.gestureHandler.on('longPress', (event: GestureEvent) => this.radialInterface.handleLongPress(event))
+    this.gestureHandler.on('pan', (event: GestureEvent) => this.radialInterface.handlePan(event))
+    this.gestureHandler.on('pinch', (event: GestureEvent) => this.radialInterface.handlePinch(event))
   }
 
   private loadDefaultProject(): void {
