@@ -16,6 +16,7 @@ export class RadialInterface extends EventEmitter {
     dragDistance: number
     velocity: number
     momentum: number
+    lastDragEnd?: number
   } = { 
     isDragging: false, 
     bubbleId: null, 
@@ -121,6 +122,60 @@ export class RadialInterface extends EventEmitter {
       
       this.bubbles.set(child.id, positioned)
     })
+
+    // Add "+" buttons between children for creating new nodes
+    this.renderAddButtons(children.length, radius, angleStep, centerX, centerY)
+  }
+
+  private renderAddButtons(childCount: number, radius: number, angleStep: number, centerX: number, centerY: number): void {
+    // Only add buttons if there are existing children and not too many
+    if (childCount === 0 || childCount > 8) return // Avoid overcrowding
+
+    // Place "+" buttons between children
+    for (let i = 0; i < childCount; i++) {
+      const childAngle = i * angleStep - Math.PI / 2
+      const midAngle = childAngle + (angleStep / 2)
+      
+      // Position the "+" button slightly inward for better visual hierarchy
+      const addButtonRadius = radius * 0.85
+      const x = centerX + addButtonRadius * Math.cos(midAngle)
+      const y = centerY + addButtonRadius * Math.sin(midAngle)
+
+      const addButton = document.createElement('div')
+      addButton.className = 'bubble add-button'
+      addButton.innerHTML = '<span class="bubble-text">+</span>'
+      addButton.style.left = `${x - 15}px` // Small 30px button
+      addButton.style.top = `${y - 15}px`
+      addButton.style.width = '30px'
+      addButton.style.height = '30px'
+      addButton.style.fontSize = '18px'
+      addButton.style.background = 'rgba(255, 255, 255, 0.3)'
+      addButton.style.border = '2px solid rgba(255, 255, 255, 0.6)'
+      addButton.style.cursor = 'pointer'
+      addButton.style.display = 'flex'
+      addButton.style.alignItems = 'center'
+      addButton.style.justifyContent = 'center'
+      addButton.style.borderRadius = '50%'
+      addButton.style.transition = 'all 0.2s ease'
+
+      // Hover effect
+      addButton.addEventListener('mouseenter', () => {
+        addButton.style.background = 'rgba(255, 255, 255, 0.5)'
+        addButton.style.transform = 'scale(1.1)'
+      })
+      addButton.addEventListener('mouseleave', () => {
+        addButton.style.background = 'rgba(255, 255, 255, 0.3)'
+        addButton.style.transform = 'scale(1)'
+      })
+
+      // Add click handler to create new child
+      addButton.addEventListener('click', (e) => {
+        e.stopPropagation()
+        this.createChild()
+      })
+      
+      this.canvas.appendChild(addButton)
+    }
   }
 
   handleTap(event: GestureEvent): void {
@@ -166,6 +221,10 @@ export class RadialInterface extends EventEmitter {
       }
     }
     
+    // Mark drag end time for selection conflict resolution
+    const wasDragging = this.dragState.isDragging
+    const lastDragEnd = wasDragging ? Date.now() : undefined
+    
     // Reset drag state when gesture ends
     this.dragState = { 
       isDragging: false, 
@@ -176,14 +235,22 @@ export class RadialInterface extends EventEmitter {
       lastPosition: { x: 0, y: 0 },
       dragDistance: 0,
       velocity: 0,
-      momentum: 0
+      momentum: 0,
+      lastDragEnd
     }
   }
 
   private selectBubble(bubbleId: string): void {
-    // Only proceed with selection if we're not in an active drag
-    if (this.dragState.isDragging && this.dragState.dragDistance > 10) {
+    // Only proceed with selection if we're not in a significant drag
+    // Use a smaller threshold for better tap detection
+    if (this.dragState.isDragging && this.dragState.dragDistance > 5) {
       return // Ignore selection during active drag
+    }
+    
+    // Also check if this was a very recent drag end
+    const now = Date.now()
+    if (this.dragState.lastDragEnd && (now - this.dragState.lastDragEnd) < 100) {
+      return // Ignore taps immediately after drag ends
     }
     
     // Reset drag state when selecting
@@ -373,15 +440,15 @@ export class RadialInterface extends EventEmitter {
   }
 
   private applyMomentum(): void {
-    // Apply momentum-based rotation after drag ends
-    let currentVelocity = this.dragState.velocity * 0.05 // Scale down velocity
-    const friction = 0.95 // Deceleration factor
-    const minVelocity = 0.001 // Minimum velocity before stopping
+    // Apply momentum-based rotation after drag ends - DRAMATICALLY INCREASED
+    let currentVelocity = this.dragState.velocity * 0.3 // Much higher initial velocity
+    const friction = 0.98 // Much less friction (was 0.95)
+    const minVelocity = 0.0001 // Lower threshold for longer spin
     
     const momentumAnimation = () => {
       if (Math.abs(currentVelocity) > minVelocity && !this.dragState.isDragging) {
-        // Apply rotation based on current velocity
-        const rotationDelta = currentVelocity * 0.1
+        // Apply rotation based on current velocity - MUCH MORE DRAMATIC
+        const rotationDelta = currentVelocity * 0.5 // 5x higher rotation multiplier
         this.updateOrbitalPositions(rotationDelta)
         
         // Reduce velocity due to friction
