@@ -11,7 +11,22 @@ export class RadialInterface extends EventEmitter {
     bubbleId: string | null
     startAngle: number
     currentAngle: number
-  } = { isDragging: false, bubbleId: null, startAngle: 0, currentAngle: 0 }
+    startPosition: { x: number; y: number }
+    lastPosition: { x: number; y: number }
+    dragDistance: number
+    velocity: number
+    momentum: number
+  } = { 
+    isDragging: false, 
+    bubbleId: null, 
+    startAngle: 0, 
+    currentAngle: 0,
+    startPosition: { x: 0, y: 0 },
+    lastPosition: { x: 0, y: 0 },
+    dragDistance: 0,
+    velocity: 0,
+    momentum: 0
+  }
 
   constructor(canvas: HTMLElement) {
     super()
@@ -138,15 +153,51 @@ export class RadialInterface extends EventEmitter {
   }
 
   handleGestureEnd(): void {
+    // Apply momentum if dragging was active
+    if (this.dragState.isDragging && Math.abs(this.dragState.velocity) > 0.01) {
+      this.applyMomentum()
+    }
+    
+    // Remove visual feedback
+    if (this.dragState.bubbleId) {
+      const bubble = this.bubbles.get(this.dragState.bubbleId)
+      if (bubble) {
+        bubble.element.classList.remove('dragging')
+      }
+    }
+    
     // Reset drag state when gesture ends
-    if (this.dragState.isDragging) {
-      this.dragState = { isDragging: false, bubbleId: null, startAngle: 0, currentAngle: 0 }
+    this.dragState = { 
+      isDragging: false, 
+      bubbleId: null, 
+      startAngle: 0, 
+      currentAngle: 0,
+      startPosition: { x: 0, y: 0 },
+      lastPosition: { x: 0, y: 0 },
+      dragDistance: 0,
+      velocity: 0,
+      momentum: 0
     }
   }
 
   private selectBubble(bubbleId: string): void {
+    // Only proceed with selection if we're not in an active drag
+    if (this.dragState.isDragging && this.dragState.dragDistance > 10) {
+      return // Ignore selection during active drag
+    }
+    
     // Reset drag state when selecting
-    this.dragState = { isDragging: false, bubbleId: null, startAngle: 0, currentAngle: 0 }
+    this.dragState = { 
+      isDragging: false, 
+      bubbleId: null, 
+      startAngle: 0, 
+      currentAngle: 0,
+      startPosition: { x: 0, y: 0 },
+      lastPosition: { x: 0, y: 0 },
+      dragDistance: 0,
+      velocity: 0,
+      momentum: 0
+    }
     
     // Remove previous selection
     this.bubbles.forEach(bubble => {
@@ -210,31 +261,87 @@ export class RadialInterface extends EventEmitter {
     const centerX = this.canvas.offsetWidth / 2
     const centerY = this.canvas.offsetHeight / 2
     
-    // Calculate angle from center to current position
-    const deltaX = event.position.x - centerX
-    const deltaY = event.position.y - centerY
-    const angle = Math.atan2(deltaY, deltaX)
+    // Get bubble-relative position for better drag calculation
+    const bubbleRect = bubble.element.getBoundingClientRect()
+    const canvasRect = this.canvas.getBoundingClientRect()
+    const bubbleX = bubbleRect.left + bubbleRect.width / 2 - canvasRect.left
+    const bubbleY = bubbleRect.top + bubbleRect.height / 2 - canvasRect.top
     
-    if (!this.dragState.isDragging) {
-      this.dragState.isDragging = true
+    // Calculate distance from center for speed scaling
+    const distanceFromCenter = Math.sqrt(Math.pow(bubbleX - centerX, 2) + Math.pow(bubbleY - centerY, 2))
+    
+    if (!this.dragState.isDragging && !this.dragState.bubbleId) {
+      // Initialize drag state
       this.dragState.bubbleId = bubbleId
-      this.dragState.startAngle = angle
-      this.dragState.currentAngle = angle
+      this.dragState.startPosition = { x: event.position.x, y: event.position.y }
+      this.dragState.lastPosition = { x: event.position.x, y: event.position.y }
+      this.dragState.dragDistance = 0
+      this.dragState.velocity = 0
+      
+      // Calculate initial angle from bubble position to center
+      const deltaX = bubbleX - centerX
+      const deltaY = bubbleY - centerY
+      this.dragState.startAngle = Math.atan2(deltaY, deltaX)
+      this.dragState.currentAngle = this.dragState.startAngle
+      
+      // Add visual feedback
+      bubble.element.classList.add('dragging')
     } else if (this.dragState.bubbleId === bubbleId) {
-      this.dragState.currentAngle = angle
-      this.updateOrbitalPositions(angle - this.dragState.startAngle)
+      // Calculate drag distance
+      const dx = event.position.x - this.dragState.startPosition.x
+      const dy = event.position.y - this.dragState.startPosition.y
+      this.dragState.dragDistance = Math.sqrt(dx * dx + dy * dy)
+      
+      // Only start actual rotation if drag distance exceeds threshold
+      const DRAG_THRESHOLD = 15 // Minimum pixels before starting rotation
+      if (this.dragState.dragDistance > DRAG_THRESHOLD) {
+        this.dragState.isDragging = true
+        
+        // Calculate velocity for momentum
+        const timeDelta = 16 // Assume 60fps, ~16ms per frame
+        const positionDelta = Math.sqrt(
+          Math.pow(event.position.x - this.dragState.lastPosition.x, 2) +
+          Math.pow(event.position.y - this.dragState.lastPosition.y, 2)
+        )
+        this.dragState.velocity = positionDelta / timeDelta
+        
+        // Calculate rotation based on tangential movement
+        const currentX = event.position.x - canvasRect.left
+        const currentY = event.position.y - canvasRect.top
+        const currentAngle = Math.atan2(currentY - centerY, currentX - centerX)
+        
+        // Apply speed scaling based on distance from center (further = slower rotation)
+        const speedMultiplier = Math.max(0.3, 100 / distanceFromCenter)
+        const rawDelta = currentAngle - this.dragState.currentAngle
+        
+        // Handle angle wraparound (-π to π)
+        let adjustedDelta = rawDelta
+        if (adjustedDelta > Math.PI) adjustedDelta -= 2 * Math.PI
+        if (adjustedDelta < -Math.PI) adjustedDelta += 2 * Math.PI
+        
+        const scaledDelta = adjustedDelta * speedMultiplier
+        this.dragState.currentAngle = currentAngle
+        
+        // Apply smooth rotation with easing
+        this.updateOrbitalPositions(scaledDelta)
+      }
+      
+      this.dragState.lastPosition = { x: event.position.x, y: event.position.y }
     }
   }
 
   private updateOrbitalPositions(deltaAngle: number): void {
-    // Rotate all child bubbles around center
+    // Smooth rotation with interpolation
     const centerX = this.canvas.offsetWidth / 2
     const centerY = this.canvas.offsetHeight / 2
+    
+    // Apply easing to make rotation feel more natural
+    const easedDelta = this.easeRotation(deltaAngle)
     
     this.bubbles.forEach(bubble => {
       if (bubble.level === 1 && bubble.position?.radius) {
         const originalAngle = bubble.position.angle || 0
-        const newAngle = originalAngle + deltaAngle
+        const newAngle = originalAngle + easedDelta
         
         const x = centerX + bubble.position.radius * Math.cos(newAngle)
         const y = centerY + bubble.position.radius * Math.sin(newAngle)
@@ -246,8 +353,47 @@ export class RadialInterface extends EventEmitter {
         const childBubbleSize = 80
         bubble.element.style.left = `${x - childBubbleSize / 2}px`
         bubble.element.style.top = `${y - childBubbleSize / 2}px`
+        
+        // Add smooth transition for visual feedback
+        bubble.element.style.transition = this.dragState.isDragging ? 'none' : 'transform 0.1s ease-out'
       }
     })
+  }
+
+  private easeRotation(deltaAngle: number): number {
+    // Apply cubic easing to rotation for more natural feel
+    const maxRotationSpeed = 0.1 // Limit maximum rotation speed
+    const clampedDelta = Math.max(-maxRotationSpeed, Math.min(maxRotationSpeed, deltaAngle))
+    
+    // Cubic easing function for smoother rotation
+    const t = Math.abs(clampedDelta) / maxRotationSpeed
+    const easedT = t * t * (3 - 2 * t) // Smoothstep function
+    
+    return Math.sign(clampedDelta) * easedT * maxRotationSpeed
+  }
+
+  private applyMomentum(): void {
+    // Apply momentum-based rotation after drag ends
+    let currentVelocity = this.dragState.velocity * 0.05 // Scale down velocity
+    const friction = 0.95 // Deceleration factor
+    const minVelocity = 0.001 // Minimum velocity before stopping
+    
+    const momentumAnimation = () => {
+      if (Math.abs(currentVelocity) > minVelocity && !this.dragState.isDragging) {
+        // Apply rotation based on current velocity
+        const rotationDelta = currentVelocity * 0.1
+        this.updateOrbitalPositions(rotationDelta)
+        
+        // Reduce velocity due to friction
+        currentVelocity *= friction
+        
+        // Continue animation
+        requestAnimationFrame(momentumAnimation)
+      }
+    }
+    
+    // Start momentum animation
+    requestAnimationFrame(momentumAnimation)
   }
 
   private animateToCenter(bubbleId: string): void {
