@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="description" content="Mindly-style radial bubble interface for mind mapping">
+  <title>Sol - Radial Mind Mapping</title>
+  
+  <!-- Touch-friendly meta tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  
+  <!-- Prevent text selection and context menus for app-like experience -->
+  <style>
+    * {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    /* Allow text selection only in editing contexts */
+    .editable {
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <h1>Sol</h1>
+    </header>
+    
+    <main class="canvas-container">
+      <div class="radial-canvas" id="radialCanvas">
+        <!-- Radial bubble interface will be rendered here -->
+        <div class="central-bubble sun-bubble" data-bubble-id="root">
+          <span class="bubble-text">Welcome to Sol</span>
+        </div>
+      </div>
+    </main>
+    
+    <nav class="bottom-nav">
+      <button class="nav-btn" data-action="home" aria-label="Home">
+        <span class="nav-icon">🏠</span>
+      </button>
+      <button class="nav-btn" data-action="overview" aria-label="Mindmap Overview">
+        <span class="nav-icon">🗺️</span>
+      </button>
+      <button class="nav-btn" data-action="print" aria-label="Print">
+        <span class="nav-icon">🖨️</span>
+      </button>
+      <button class="nav-btn" data-action="export" aria-label="Share/Export">
+        <span class="nav-icon">📤</span>
+      </button>
+    </nav>
+    
+    <!-- Context menu for bubble actions -->
+    <div class="context-menu hidden" id="contextMenu">
+      <button class="context-item" data-action="edit">Edit</button>
+      <button class="context-item" data-action="add-child">Add Child</button>
+      <button class="context-item" data-action="color">Change Color</button>
+      <button class="context-item" data-action="attach">Attach File</button>
+      <button class="context-item" data-action="copy">Copy</button>
+      <button class="context-item" data-action="delete">Delete</button>
+    </div>
+  </div>
+  
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

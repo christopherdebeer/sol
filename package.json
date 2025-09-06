@@ -1,0 +1,26 @@
+{
+  "name": "sol-mindly-interface",
+  "version": "0.1.0",
+  "description": "Mindly-style radial bubble interface for mind mapping",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "typescript": "^5.2.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.0",
+    "@typescript-eslint/eslint-plugin": "^6.4.0",
+    "@typescript-eslint/parser": "^6.4.0",
+    "eslint": "^8.47.0",
+    "vite": "^4.4.5"
+  },
+  "keywords": ["mindmap", "radial-interface", "bubble-navigation", "mobile-first", "typescript"],
+  "author": "Christopher de Beer",
+  "license": "MIT"
+}
