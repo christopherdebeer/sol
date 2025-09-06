@@ -50,26 +50,18 @@
       <button class="nav-btn" data-action="home" aria-label="Home">
         <span class="nav-icon">🏠</span>
       </button>
+      <button class="nav-btn" data-action="add-child" aria-label="Add Child Bubble">
+        <span class="nav-icon">➕</span>
+      </button>
       <button class="nav-btn" data-action="overview" aria-label="Mindmap Overview">
         <span class="nav-icon">🗺️</span>
-      </button>
-      <button class="nav-btn" data-action="print" aria-label="Print">
-        <span class="nav-icon">🖨️</span>
       </button>
       <button class="nav-btn" data-action="export" aria-label="Share/Export">
         <span class="nav-icon">📤</span>
       </button>
     </nav>
     
-    <!-- Context menu for bubble actions -->
-    <div class="context-menu hidden" id="contextMenu">
-      <button class="context-item" data-action="edit">Edit</button>
-      <button class="context-item" data-action="add-child">Add Child</button>
-      <button class="context-item" data-action="color">Change Color</button>
-      <button class="context-item" data-action="attach">Attach File</button>
-      <button class="context-item" data-action="copy">Copy</button>
-      <button class="context-item" data-action="delete">Delete</button>
-    </div>
+    <!-- Context menu removed per requirement #6 -->
   </div>
   
   <script type="module" src="/src/main.ts"></script>

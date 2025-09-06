@@ -6,6 +6,12 @@ export class RadialInterface extends EventEmitter {
   private currentProject: BubbleNode | null = null
   private viewState: ViewState
   private bubbles: Map<string, PositionedBubble> = new Map()
+  private dragState: {
+    isDragging: boolean
+    bubbleId: string | null
+    startAngle: number
+    currentAngle: number
+  } = { isDragging: false, bubbleId: null, startAngle: 0, currentAngle: 0 }
 
   constructor(canvas: HTMLElement) {
     super()
@@ -31,12 +37,20 @@ export class RadialInterface extends EventEmitter {
     this.canvas.innerHTML = ''
     this.bubbles.clear()
 
-    // Render central bubble
-    this.renderCentralBubble(this.currentProject)
+    // Find the currently centered node
+    const centeredNode = this.findNode(this.currentProject, this.viewState.centerNode) || this.currentProject
+
+    // Render central bubble with current focused node
+    this.renderCentralBubble(centeredNode)
     
     // Render child bubbles in orbital pattern
-    if (this.currentProject.children.length > 0) {
-      this.renderChildBubbles(this.currentProject.children)
+    if (centeredNode.children.length > 0) {
+      this.renderChildBubbles(centeredNode.children)
+    }
+
+    // Render parent breadcrumb if not at root
+    if (centeredNode.id !== this.currentProject.id) {
+      this.renderParentBreadcrumb(centeredNode.id)
     }
   }
 
@@ -62,7 +76,10 @@ export class RadialInterface extends EventEmitter {
   private renderChildBubbles(children: BubbleNode[]): void {
     const centerX = this.canvas.offsetWidth / 2
     const centerY = this.canvas.offsetHeight / 2
-    const radius = Math.min(centerX, centerY) * 0.6
+    const centralBubbleSize = 150 // From CSS --bubble-size-sun
+    const childBubbleSize = 80 // From CSS --bubble-size-medium
+    const minSpacing = 40 // Minimum space between bubbles
+    const radius = (centralBubbleSize / 2) + (childBubbleSize / 2) + minSpacing
     const angleStep = (2 * Math.PI) / children.length
 
     children.forEach((child, index) => {
@@ -71,11 +88,11 @@ export class RadialInterface extends EventEmitter {
       const y = centerY + radius * Math.sin(angle)
 
       const bubble = document.createElement('div')
-      bubble.className = 'bubble child-bubble'
+      bubble.className = 'bubble child-bubble draggable-bubble'
       bubble.dataset.bubbleId = child.id
       bubble.innerHTML = `<span class="bubble-text">${child.text}</span>`
-      bubble.style.left = `${x - 40}px` // Offset for bubble center
-      bubble.style.top = `${y - 40}px`
+      bubble.style.left = `${x - childBubbleSize / 2}px`
+      bubble.style.top = `${y - childBubbleSize / 2}px`
       
       this.canvas.appendChild(bubble)
       
@@ -105,30 +122,32 @@ export class RadialInterface extends EventEmitter {
     }
   }
 
-  handleLongPress(event: GestureEvent): void {
-    const bubble = event.target.closest('.bubble') as HTMLElement
-    if (bubble && bubble.dataset.bubbleId) {
-      this.showContextMenu(bubble.dataset.bubbleId, event.position)
-    }
+  handleLongPress(_event: GestureEvent): void {
+    // Long press disabled per requirement #6 (no context menu)
   }
 
   handlePan(event: GestureEvent): void {
-    // Implement panning logic
-    this.viewState.pan.x += event.deltaX || 0
-    this.viewState.pan.y += event.deltaY || 0
-    this.updateCanvasTransform()
+    const bubble = event.target.closest('.bubble') as HTMLElement
+    if (bubble && bubble.classList.contains('child-bubble') && bubble.dataset.bubbleId) {
+      this.handleBubbleDrag(bubble.dataset.bubbleId, event)
+    }
   }
 
-  handlePinch(event: GestureEvent): void {
-    // Implement zoom logic
-    if (event.scale) {
-      this.viewState.zoom *= event.scale
-      this.viewState.zoom = Math.max(0.5, Math.min(3, this.viewState.zoom))
-      this.updateCanvasTransform()
+  handlePinch(_event: GestureEvent): void {
+    // Pinch gestures disabled to simplify implementation per requirement #1
+  }
+
+  handleGestureEnd(): void {
+    // Reset drag state when gesture ends
+    if (this.dragState.isDragging) {
+      this.dragState = { isDragging: false, bubbleId: null, startAngle: 0, currentAngle: 0 }
     }
   }
 
   private selectBubble(bubbleId: string): void {
+    // Reset drag state when selecting
+    this.dragState = { isDragging: false, bubbleId: null, startAngle: 0, currentAngle: 0 }
+    
     // Remove previous selection
     this.bubbles.forEach(bubble => {
       bubble.element.classList.remove('selected')
@@ -137,7 +156,13 @@ export class RadialInterface extends EventEmitter {
     const bubble = this.bubbles.get(bubbleId)
     if (bubble) {
       bubble.element.classList.add('selected')
-      this.emit('bubbleSelected', bubble)
+      
+      // If selecting a child bubble, navigate to it (requirement #8)
+      if (bubble.level === 1) {
+        this.animateToCenter(bubbleId)
+      } else {
+        this.emit('bubbleSelected', bubble)
+      }
     }
   }
 
@@ -176,28 +201,145 @@ export class RadialInterface extends EventEmitter {
     textElement.addEventListener('keydown', handleKeydown)
   }
 
-  private showContextMenu(bubbleId: string, position: { x: number; y: number }): void {
-    const contextMenu = document.getElementById('contextMenu')
-    if (!contextMenu) return
+  // Context menu removed per requirement #6
 
-    contextMenu.classList.remove('hidden')
-    contextMenu.style.left = `${position.x}px`
-    contextMenu.style.top = `${position.y}px`
-    contextMenu.dataset.targetBubble = bubbleId
+  private handleBubbleDrag(bubbleId: string, event: GestureEvent): void {
+    const bubble = this.bubbles.get(bubbleId)
+    if (!bubble || bubble.level !== 1) return // Only drag child bubbles
 
-    // Hide menu when clicking elsewhere
-    const hideMenu = (e: Event) => {
-      if (!contextMenu.contains(e.target as Node)) {
-        contextMenu.classList.add('hidden')
-        document.removeEventListener('click', hideMenu)
-      }
+    const centerX = this.canvas.offsetWidth / 2
+    const centerY = this.canvas.offsetHeight / 2
+    
+    // Calculate angle from center to current position
+    const deltaX = event.position.x - centerX
+    const deltaY = event.position.y - centerY
+    const angle = Math.atan2(deltaY, deltaX)
+    
+    if (!this.dragState.isDragging) {
+      this.dragState.isDragging = true
+      this.dragState.bubbleId = bubbleId
+      this.dragState.startAngle = angle
+      this.dragState.currentAngle = angle
+    } else if (this.dragState.bubbleId === bubbleId) {
+      this.dragState.currentAngle = angle
+      this.updateOrbitalPositions(angle - this.dragState.startAngle)
     }
-    setTimeout(() => document.addEventListener('click', hideMenu), 10)
   }
 
-  private updateCanvasTransform(): void {
-    const transform = `translate(${this.viewState.pan.x}px, ${this.viewState.pan.y}px) scale(${this.viewState.zoom}) rotate(${this.viewState.rotation}deg)`
-    this.canvas.style.transform = transform
+  private updateOrbitalPositions(deltaAngle: number): void {
+    // Rotate all child bubbles around center
+    const centerX = this.canvas.offsetWidth / 2
+    const centerY = this.canvas.offsetHeight / 2
+    
+    this.bubbles.forEach(bubble => {
+      if (bubble.level === 1 && bubble.position?.radius) {
+        const originalAngle = bubble.position.angle || 0
+        const newAngle = originalAngle + deltaAngle
+        
+        const x = centerX + bubble.position.radius * Math.cos(newAngle)
+        const y = centerY + bubble.position.radius * Math.sin(newAngle)
+        
+        bubble.position.angle = newAngle
+        bubble.position.x = x
+        bubble.position.y = y
+        
+        const childBubbleSize = 80
+        bubble.element.style.left = `${x - childBubbleSize / 2}px`
+        bubble.element.style.top = `${y - childBubbleSize / 2}px`
+      }
+    })
+  }
+
+  private animateToCenter(bubbleId: string): void {
+    const bubble = this.bubbles.get(bubbleId)
+    if (!bubble || !this.currentProject) return
+
+    // Find the node in the data structure
+    const nodeToCenter = this.findNode(this.currentProject, bubbleId)
+    if (!nodeToCenter) return
+
+    // Add animation class
+    bubble.element.classList.add('transitioning-to-center')
+    
+    // Animate bubble to center and show its children
+    setTimeout(() => {
+      this.viewState.centerNode = bubbleId
+      this.renderBubbles()
+      this.emit('nodeNavigated', nodeToCenter)
+    }, 300)
+  }
+
+  private findNode(root: BubbleNode, targetId: string): BubbleNode | null {
+    if (root.id === targetId) return root
+    
+    for (const child of root.children) {
+      const found = this.findNode(child, targetId)
+      if (found) return found
+    }
+    
+    return null
+  }
+
+  // Canvas transform removed per requirement #1 (canvas non-interactive)
+
+  private renderParentBreadcrumb(currentNodeId: string): void {
+    // Add a small parent indicator in top-left for navigation back
+    const breadcrumb = document.createElement('div')
+    breadcrumb.className = 'bubble parent-breadcrumb'
+    breadcrumb.innerHTML = '<span class="bubble-text">↰ Parent</span>'
+    breadcrumb.style.left = '20px'
+    breadcrumb.style.top = '20px'
+    breadcrumb.style.width = '60px'
+    breadcrumb.style.height = '60px'
+    breadcrumb.style.fontSize = '0.7rem'
+    breadcrumb.style.background = 'rgba(255, 255, 255, 0.2)'
+    
+    breadcrumb.addEventListener('click', () => {
+      this.navigateToParent(currentNodeId)
+    })
+    
+    this.canvas.appendChild(breadcrumb)
+  }
+
+  private navigateToParent(currentNodeId: string): void {
+    if (!this.currentProject) return
+    
+    const parent = this.findParent(this.currentProject, currentNodeId)
+    if (parent) {
+      this.viewState.centerNode = parent.id
+      this.renderBubbles()
+    }
+  }
+
+  private findParent(root: BubbleNode, targetId: string): BubbleNode | null {
+    for (const child of root.children) {
+      if (child.id === targetId) return root
+      const found = this.findParent(child, targetId)
+      if (found) return found
+    }
+    return null
+  }
+
+  createChild(parentId?: string): void {
+    if (!this.currentProject) return
+    
+    const targetParentId = parentId || this.viewState.centerNode
+    const parent = this.findNode(this.currentProject, targetParentId)
+    if (!parent) return
+
+    const newChild: BubbleNode = {
+      id: `child_${Date.now()}`,
+      text: 'New Idea',
+      children: []
+    }
+
+    parent.children.push(newChild)
+    this.renderBubbles()
+    
+    // Auto-edit the new child
+    setTimeout(() => {
+      this.editBubble(newChild.id)
+    }, 100)
   }
 
   goToRoot(): void {
