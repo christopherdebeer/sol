@@ -131,7 +131,7 @@ export class RadialInterface extends EventEmitter {
     // Only add buttons if there are existing children and not too many
     if (childCount === 0 || childCount > 8) return // Avoid overcrowding
 
-    // Place "+" buttons between children
+    // Place "+" buttons between children - these will rotate with the orbit
     for (let i = 0; i < childCount; i++) {
       const childAngle = i * angleStep - Math.PI / 2
       const midAngle = childAngle + (angleStep / 2)
@@ -142,7 +142,7 @@ export class RadialInterface extends EventEmitter {
       const y = centerY + addButtonRadius * Math.sin(midAngle)
 
       const addButton = document.createElement('div')
-      addButton.className = 'bubble add-button'
+      addButton.className = 'bubble add-button orbit-element' // Added orbit-element class
       addButton.innerHTML = '<span class="bubble-text">+</span>'
       addButton.style.left = `${x - 15}px` // Small 30px button
       addButton.style.top = `${y - 15}px`
@@ -157,6 +157,11 @@ export class RadialInterface extends EventEmitter {
       addButton.style.justifyContent = 'center'
       addButton.style.borderRadius = '50%'
       addButton.style.transition = 'all 0.2s ease'
+
+      // Store position data for rotation
+      addButton.dataset.angle = midAngle.toString()
+      addButton.dataset.radius = addButtonRadius.toString()
+      addButton.dataset.index = i.toString()
 
       // Hover effect
       addButton.addEventListener('mouseenter', () => {
@@ -181,6 +186,12 @@ export class RadialInterface extends EventEmitter {
   handleTap(event: GestureEvent): void {
     const bubble = event.target.closest('.bubble') as HTMLElement
     if (bubble && bubble.dataset.bubbleId) {
+      console.log('[NAVIGATION DEBUG] handleTap called', {
+        bubbleId: bubble.dataset.bubbleId,
+        dragState: this.dragState,
+        target: event.target,
+        timestamp: Date.now()
+      })
       this.selectBubble(bubble.dataset.bubbleId)
     }
   }
@@ -241,15 +252,26 @@ export class RadialInterface extends EventEmitter {
   }
 
   private selectBubble(bubbleId: string): void {
+    console.log('[NAVIGATION DEBUG] selectBubble called', {
+      bubbleId,
+      isDragging: this.dragState.isDragging,
+      dragDistance: this.dragState.dragDistance,
+      lastDragEnd: this.dragState.lastDragEnd,
+      now: Date.now(),
+      timeSinceDragEnd: this.dragState.lastDragEnd ? Date.now() - this.dragState.lastDragEnd : 'N/A'
+    })
+    
     // Only proceed with selection if we're not in a significant drag
     // Use a smaller threshold for better tap detection
     if (this.dragState.isDragging && this.dragState.dragDistance > 5) {
+      console.log('[NAVIGATION DEBUG] Blocked by active drag')
       return // Ignore selection during active drag
     }
     
     // Also check if this was a very recent drag end
     const now = Date.now()
     if (this.dragState.lastDragEnd && (now - this.dragState.lastDragEnd) < 100) {
+      console.log('[NAVIGATION DEBUG] Blocked by recent drag end')
       return // Ignore taps immediately after drag ends
     }
     
@@ -277,8 +299,14 @@ export class RadialInterface extends EventEmitter {
       
       // If selecting a child bubble, navigate to it (requirement #8)
       if (bubble.level === 1) {
+        console.log('[NAVIGATION DEBUG] Navigating to child bubble', {
+          bubbleId,
+          currentCenterNode: this.viewState.centerNode,
+          bubbleText: bubble.text
+        })
         this.animateToCenter(bubbleId)
       } else {
+        console.log('[NAVIGATION DEBUG] Emitting bubbleSelected for level 0 bubble')
         this.emit('bubbleSelected', bubble)
       }
     }
@@ -381,10 +409,18 @@ export class RadialInterface extends EventEmitter {
         const speedMultiplier = Math.max(0.3, 100 / distanceFromCenter)
         const rawDelta = currentAngle - this.dragState.currentAngle
         
-        // Handle angle wraparound (-π to π)
+        // FIXED: Better bidirectional rotation - preserve natural drag direction
         let adjustedDelta = rawDelta
-        if (adjustedDelta > Math.PI) adjustedDelta -= 2 * Math.PI
-        if (adjustedDelta < -Math.PI) adjustedDelta += 2 * Math.PI
+        
+        // Handle angle wraparound while preserving direction
+        if (Math.abs(rawDelta) > Math.PI) {
+          // Choose the shorter path around the circle
+          if (rawDelta > 0) {
+            adjustedDelta = rawDelta - 2 * Math.PI
+          } else {
+            adjustedDelta = rawDelta + 2 * Math.PI
+          }
+        }
         
         const scaledDelta = adjustedDelta * speedMultiplier
         this.dragState.currentAngle = currentAngle
@@ -405,6 +441,7 @@ export class RadialInterface extends EventEmitter {
     // Apply easing to make rotation feel more natural
     const easedDelta = this.easeRotation(deltaAngle)
     
+    // Update child bubbles
     this.bubbles.forEach(bubble => {
       if (bubble.level === 1 && bubble.position?.radius) {
         const originalAngle = bubble.position.angle || 0
@@ -424,6 +461,23 @@ export class RadialInterface extends EventEmitter {
         // Add smooth transition for visual feedback
         bubble.element.style.transition = this.dragState.isDragging ? 'none' : 'transform 0.1s ease-out'
       }
+    })
+    
+    // Update "+" buttons to rotate with the orbit
+    const addButtons = this.canvas.querySelectorAll('.add-button.orbit-element')
+    addButtons.forEach((addButton: Element) => {
+      const element = addButton as HTMLElement
+      const originalAngle = parseFloat(element.dataset.angle || '0')
+      const radius = parseFloat(element.dataset.radius || '0')
+      
+      const newAngle = originalAngle + easedDelta
+      const x = centerX + radius * Math.cos(newAngle)
+      const y = centerY + radius * Math.sin(newAngle)
+      
+      element.dataset.angle = newAngle.toString()
+      element.style.left = `${x - 15}px`
+      element.style.top = `${y - 15}px`
+      element.style.transition = this.dragState.isDragging ? 'none' : 'transform 0.1s ease-out'
     })
   }
 
@@ -464,18 +518,42 @@ export class RadialInterface extends EventEmitter {
   }
 
   private animateToCenter(bubbleId: string): void {
+    console.log('[NAVIGATION DEBUG] animateToCenter called', {
+      bubbleId,
+      currentCenterNode: this.viewState.centerNode
+    })
+    
     const bubble = this.bubbles.get(bubbleId)
-    if (!bubble || !this.currentProject) return
+    if (!bubble || !this.currentProject) {
+      console.log('[NAVIGATION DEBUG] animateToCenter failed - bubble or project not found', {
+        bubbleExists: !!bubble,
+        projectExists: !!this.currentProject
+      })
+      return
+    }
 
     // Find the node in the data structure
     const nodeToCenter = this.findNode(this.currentProject, bubbleId)
-    if (!nodeToCenter) return
+    if (!nodeToCenter) {
+      console.log('[NAVIGATION DEBUG] animateToCenter failed - node not found in data structure')
+      return
+    }
+    
+    console.log('[NAVIGATION DEBUG] Node found for centering', {
+      nodeId: nodeToCenter.id,
+      nodeText: nodeToCenter.text,
+      childrenCount: nodeToCenter.children.length
+    })
 
     // Add animation class
     bubble.element.classList.add('transitioning-to-center')
     
     // Animate bubble to center and show its children
     setTimeout(() => {
+      console.log('[NAVIGATION DEBUG] Setting new center node', {
+        oldCenter: this.viewState.centerNode,
+        newCenter: bubbleId
+      })
       this.viewState.centerNode = bubbleId
       this.renderBubbles()
       this.emit('nodeNavigated', nodeToCenter)
