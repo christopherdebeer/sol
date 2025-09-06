@@ -1,0 +1,280 @@
+/* Mobile-first CSS for Sol Radial Interface */
+
+/* CSS Reset and Base */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Color Palette */
+  --primary-bg: #1a1a2e;
+  --secondary-bg: #16213e;
+  --accent-blue: #0f4c75;
+  --accent-teal: #3282b8;
+  --sun-color: #ffd700;
+  --text-light: #ffffff;
+  --text-dark: #1a1a2e;
+  --bubble-shadow: rgba(0, 0, 0, 0.3);
+  
+  /* Spacing */
+  --nav-height: 60px;
+  --header-height: 50px;
+  --bubble-size-small: 60px;
+  --bubble-size-medium: 80px;
+  --bubble-size-large: 120px;
+  --bubble-size-sun: 150px;
+  
+  /* Animation */
+  --transition-fast: 0.2s ease;
+  --transition-medium: 0.4s ease;
+  --transition-slow: 0.6s ease;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, var(--primary-bg) 0%, var(--secondary-bg) 100%);
+  color: var(--text-light);
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* Header */
+.app-header {
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 100;
+}
+
+.app-header h1 {
+  font-size: 1.5rem;
+  font-weight: 300;
+  letter-spacing: 2px;
+}
+
+/* Canvas Container */
+.canvas-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.radial-canvas {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  cursor: grab;
+}
+
+.radial-canvas:active {
+  cursor: grabbing;
+}
+
+/* Bubble Styles */
+.bubble {
+  position: absolute;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition-medium);
+  box-shadow: 0 4px 20px var(--bubble-shadow);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(5px);
+  touch-action: manipulation;
+}
+
+.bubble:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 25px var(--bubble-shadow);
+}
+
+.bubble:active {
+  transform: scale(0.95);
+}
+
+/* Central Sun Bubble */
+.central-bubble {
+  width: var(--bubble-size-sun);
+  height: var(--bubble-size-sun);
+  background: radial-gradient(circle, var(--sun-color) 0%, #ffb347 100%);
+  z-index: 10;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-dark);
+}
+
+.sun-bubble {
+  animation: gentlePulse 4s ease-in-out infinite;
+}
+
+@keyframes gentlePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+/* Child Bubbles */
+.child-bubble {
+  width: var(--bubble-size-medium);
+  height: var(--bubble-size-medium);
+  background: linear-gradient(135deg, var(--accent-teal) 0%, var(--accent-blue) 100%);
+  font-size: 0.9rem;
+}
+
+.grandchild-bubble {
+  width: var(--bubble-size-small);
+  height: var(--bubble-size-small);
+  background: linear-gradient(135deg, rgba(50, 130, 184, 0.8) 0%, rgba(15, 76, 117, 0.8) 100%);
+  font-size: 0.8rem;
+}
+
+/* Bubble Text */
+.bubble-text {
+  padding: 8px;
+  line-height: 1.2;
+  word-wrap: break-word;
+  max-width: 80%;
+}
+
+/* Bottom Navigation */
+.bottom-nav {
+  height: var(--nav-height);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0 10px;
+  z-index: 100;
+}
+
+.nav-btn {
+  width: 50px;
+  height: 50px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-light);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+}
+
+.nav-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.nav-btn:active {
+  transform: scale(0.95);
+}
+
+.nav-icon {
+  font-size: 1.2rem;
+}
+
+/* Context Menu */
+.context-menu {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 8px 0;
+  z-index: 200;
+  min-width: 150px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.context-item {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-light);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  font-size: 0.9rem;
+}
+
+.context-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.context-item:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Hidden utility class */
+.hidden {
+  display: none;
+}
+
+/* Editing state */
+.editing {
+  outline: 2px solid var(--sun-color);
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: var(--text-dark) !important;
+}
+
+/* Responsive Design */
+@media (min-width: 768px) {
+  :root {
+    --bubble-size-small: 70px;
+    --bubble-size-medium: 100px;
+    --bubble-size-large: 140px;
+    --bubble-size-sun: 180px;
+  }
+  
+  .app-header h1 {
+    font-size: 2rem;
+  }
+  
+  .bubble-text {
+    font-size: inherit;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --bubble-size-small: 80px;
+    --bubble-size-medium: 120px;
+    --bubble-size-large: 160px;
+    --bubble-size-sun: 200px;
+  }
+  
+  .nav-btn {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .nav-icon {
+    font-size: 1.4rem;
+  }
+}
