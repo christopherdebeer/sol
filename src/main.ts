@@ -38,8 +38,8 @@ class SolApp {
   private setupEventListeners(): void {
     // Navigation events
     this.navigationController.on('home', () => this.radialInterface.goToRoot())
+    this.navigationController.on('add-child', () => this.radialInterface.createChild())
     this.navigationController.on('overview', () => this.radialInterface.showOverview())
-    this.navigationController.on('print', () => this.handlePrint())
     this.navigationController.on('export', () => this.handleExport())
 
     // Gesture events
@@ -48,6 +48,10 @@ class SolApp {
     this.gestureHandler.on('longPress', (event: GestureEvent) => this.radialInterface.handleLongPress(event))
     this.gestureHandler.on('pan', (event: GestureEvent) => this.radialInterface.handlePan(event))
     this.gestureHandler.on('pinch', (event: GestureEvent) => this.radialInterface.handlePinch(event))
+    
+    // Handle end of gestures
+    document.addEventListener('touchend', () => this.radialInterface.handleGestureEnd())
+    document.addEventListener('mouseup', () => this.radialInterface.handleGestureEnd())
   }
 
   private loadDefaultProject(): void {
