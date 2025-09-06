@@ -158,11 +158,3 @@ Focus on:
 3. **Export Functions**: Data integrity across format conversions
 4. **Performance**: Smooth 60fps animations on mobile devices
 5. **Accessibility**: Keyboard navigation and screen reader support
-
-## Future Enhancements
-
-- **Real-time Collaboration**: Multi-user editing with conflict resolution
-- **Rich Media**: Inline images, videos, and embedded content
-- **Template System**: Pre-built mind map structures for different use cases
-- **Cloud Sync**: Cross-device synchronization with version history
-- **Plugin Architecture**: Extensible functionality through third-party modules
