@@ -122,7 +122,7 @@ export class RadialInterface extends EventEmitter {
     }
   }
 
-  handleLongPress(event: GestureEvent): void {
+  handleLongPress(_event: GestureEvent): void {
     // Long press disabled per requirement #6 (no context menu)
   }
 
@@ -133,7 +133,7 @@ export class RadialInterface extends EventEmitter {
     }
   }
 
-  handlePinch(event: GestureEvent): void {
+  handlePinch(_event: GestureEvent): void {
     // Pinch gestures disabled to simplify implementation per requirement #1
   }
 
@@ -280,10 +280,7 @@ export class RadialInterface extends EventEmitter {
     return null
   }
 
-  private updateCanvasTransform(): void {
-    const transform = `translate(${this.viewState.pan.x}px, ${this.viewState.pan.y}px) scale(${this.viewState.zoom}) rotate(${this.viewState.rotation}deg)`
-    this.canvas.style.transform = transform
-  }
+  // Canvas transform removed per requirement #1 (canvas non-interactive)
 
   private renderParentBreadcrumb(currentNodeId: string): void {
     // Add a small parent indicator in top-left for navigation back

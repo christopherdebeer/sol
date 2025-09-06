@@ -84,11 +84,6 @@ class SolApp {
     this.radialInterface.loadProject(defaultProject)
   }
 
-  private handlePrint(): void {
-    // TODO: Implement print functionality
-    console.log('Print requested')
-  }
-
   private handleExport(): void {
     // TODO: Implement export functionality (markdown, mermaid, svg)
     console.log('Export requested')
